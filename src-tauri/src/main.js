@@ -32,6 +32,7 @@ async function testOverlay() {
     }
   }
 
+  // Demo text loop (disabled automatically once Azure streaming starts)
   const subtitles = [
     "This is a sample subtitle line.",
     "It changes every couple of seconds.",
@@ -40,7 +41,8 @@ async function testOverlay() {
     "Testing overlay rendering...",
   ];
   let idx = 0;
-  setInterval(() => {
+  window.__SUB_TIMER = setInterval(() => {
+    if (window.__AZURE_ACTIVE) return; // don't overwrite when streaming
     const el = document.getElementById("overlay");
     if (!el) return;
     el.textContent = subtitles[idx % subtitles.length];
@@ -81,6 +83,83 @@ async function testOverlay() {
     const out = await invoke("start_system_capture", { outputWavPath: path });
     console.log("Capture started, writing to:", out);
     return out;
+  };
+
+  // Azure streaming bootstrap (called when you want to start translation)
+  window.startAzureStream = async (opts) => {
+    window.__AZURE_ACTIVE = true;
+    if (window.__SUB_TIMER) { clearInterval(window.__SUB_TIMER); window.__SUB_TIMER = null; }
+    // opts: { region, targetLang, autoDetect: true|false, fromLang?: string }
+    if (!invoke) { console.error("invoke not available"); return; }
+    const token = await invoke("get_azure_token"); // backend reads env vars
+    // Dynamically load SDK if not present
+    if (!window.SpeechSDK) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://aka.ms/csspeech/jsbrowserpackageraw";
+        s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
+      });
+    }
+    const SpeechSDK = window.SpeechSDK;
+    const region = (opts && opts.region) || (await invoke("get_azure_region").catch(()=>null)) || "eastus";
+    const cfg = SpeechSDK.SpeechTranslationConfig.fromAuthorizationToken(token, region);
+    cfg.addTargetLanguage((opts && opts.targetLang) || "en");
+    // Source language requirement: either specify speechRecognitionLanguage or provide AutoDetect config
+    let autoCfg = null;
+    if (opts && opts.autoDetect) {
+      const candidates = (opts && opts.candidates && opts.candidates.length)
+        ? opts.candidates
+        : ["en-US", "hi-IN"]; // sensible defaults; adjust later in UI
+      autoCfg = SpeechSDK.AutoDetectSourceLanguageConfig.fromLanguages(candidates);
+    } else {
+      cfg.speechRecognitionLanguage = (opts && opts.fromLang) || "en-US"; // default to a valid locale
+    }
+    const pushStream = SpeechSDK.AudioInputStream.createPushStream(
+      SpeechSDK.AudioStreamFormat.getWaveFormatPCM(16000, 16, 1)
+    );
+    const audioConfig = SpeechSDK.AudioConfig.fromStreamInput(pushStream);
+    const recognizer = autoCfg
+      ? new SpeechSDK.TranslationRecognizer(cfg, audioConfig, autoCfg)
+      : new SpeechSDK.TranslationRecognizer(cfg, audioConfig);
+
+    // Pipe PCM frames from backend
+    // Fail-safe: drop lingering listeners before starting
+    if (window.__PCM_UNLISTEN) { try { window.__PCM_UNLISTEN(); } catch {} window.__PCM_UNLISTEN = null; }
+
+    const unlisten = await T.event?.listen?.("pcm-frame", (e) => {
+      const b64 = e?.payload?.b64; if (!b64) return;
+      const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+      pushStream.write(bytes);
+    });
+    window.__PCM_UNLISTEN = unlisten;
+
+    let lastText = "";
+    recognizer.recognizing = (_s, e) => {
+      const text = e.result?.translations?.get?.(cfg.targetLanguages[0]) || e.result?.text || "";
+      if (text && text !== lastText) {
+        const el = document.getElementById("overlay"); if (el) el.textContent = text;
+        lastText = text;
+      }
+    };
+    recognizer.recognized = (_s, e) => {
+      const text = e.result?.translations?.get?.(cfg.targetLanguages[0]) || e.result?.text || "";
+      if (text) {
+        const el = document.getElementById("overlay"); if (el) el.textContent = text;
+        lastText = text;
+      }
+    };
+    recognizer.canceled = (_s, e) => { console.warn("Azure canceled", e.errorDetails); };
+    recognizer.sessionStopped = () => { console.log("Azure session stopped"); };
+
+    recognizer.startContinuousRecognitionAsync();
+
+    // Return a stopper
+    return async () => {
+      pushStream.close();
+      await new Promise((res)=> recognizer.stopContinuousRecognitionAsync(()=>res(), ()=>res()));
+      if (window.__PCM_UNLISTEN) { try { window.__PCM_UNLISTEN(); } catch {} window.__PCM_UNLISTEN = null; }
+      window.__AZURE_ACTIVE = false;
+    };
   };
   window.stopSystemCapture = async () => {
     if (!invoke) {
