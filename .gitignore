@@ -1,0 +1,21 @@
+# Node/JS artifacts
+node_modules/
+dist/
+
+# Rust/target
+**/target/
+
+# Tauri
+src-tauri/gen/
+src-tauri/.tauri/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+

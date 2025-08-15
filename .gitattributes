@@ -1,0 +1,9 @@
+# Normalize line endings
+* text=auto eol=lf
+
+# Keep binary as-is
+*.png binary
+*.ico binary
+*.icns binary
+
+
