@@ -51,25 +51,55 @@ async function testOverlay() {
 
   // Drag handle logic: temporarily disable click-through while dragging
   const handle = document.getElementById("drag-handle");
-  if (handle && win) {
-    let dragging = false;
-    const beginDrag = async (e) => {
-      try {
-        dragging = true;
-        await win.setIgnoreCursorEvents(false);
-        await win.startDragging();
-      } finally {
-        // after a short delay re-enable click-through
-        setTimeout(async () => {
-          if (dragging) {
-            await win.setIgnoreCursorEvents(true);
-            dragging = false;
-          }
-        }, 50);
+  const overlay = document.getElementById('overlay');
+  if (handle) {
+    // Ensure dot elements exist
+    if (!handle.querySelector('.grip-dots')) {
+      const dots = document.createElement('div');
+      dots.className = 'grip-dots';
+      for (let i = 0; i < 6; i++) {
+        const d = document.createElement('div'); d.className = 'dot'; dots.appendChild(d);
       }
+      handle.appendChild(dots);
+    }
+    // Align the handle to the overlay's left edge
+    const alignHandle = () => {
+  if (!overlay || !handle) return;
+  const rect = overlay.getBoundingClientRect();
+  const handleWidth = 32; // keep in sync with CSS
+  const handleHeight = 44; // keep in sync with CSS
+  const right = 24; // fixed distance from window right edge
+  const desiredTop = rect.top + (rect.height / 2) - (handleHeight / 2);
+  const top = Math.max(4, Math.min(window.innerHeight - handleHeight - 4, Math.round(desiredTop)));
+  handle.style.left = '';
+  handle.style.right = `${right}px`;
+  handle.style.top = `${top}px`;
     };
-    handle.addEventListener("mousedown", beginDrag);
-    handle.addEventListener("touchstart", beginDrag, { passive: true });
+    // Run on next frame in case layout not settled
+    requestAnimationFrame(alignHandle);
+    window.addEventListener('resize', alignHandle);
+    try { const ro = new ResizeObserver(() => alignHandle()); if (overlay) ro.observe(overlay); } catch {}
+
+    // Dragging behavior (only when win available)
+    if (win) {
+      let dragging = false;
+      const beginDrag = async () => {
+        try {
+          dragging = true;
+          try { await win.setIgnoreCursorEvents(false); } catch {}
+          try { await win.startDragging(); } catch {}
+        } finally {
+          setTimeout(async () => {
+            if (dragging) {
+              try { await win.setIgnoreCursorEvents(true); } catch {}
+              dragging = false;
+            }
+          }, 50);
+        }
+      };
+      handle.addEventListener("mousedown", beginDrag);
+      handle.addEventListener("touchstart", beginDrag, { passive: true });
+    }
   }
 
   // Allow hold-Shift to temporarily disable click-through for dragging/interaction
@@ -78,13 +108,13 @@ async function testOverlay() {
     document.addEventListener("keydown", async (e) => {
       if (e.key === "Shift" && !shiftDown) {
         shiftDown = true;
-        await win.setIgnoreCursorEvents(false);
+  try { await win.setIgnoreCursorEvents(false); } catch {}
       }
     });
     document.addEventListener("keyup", async (e) => {
       if (e.key === "Shift") {
         shiftDown = false;
-  await win.setIgnoreCursorEvents(true);
+  try { await win.setIgnoreCursorEvents(true); } catch {}
       }
     });
   }
