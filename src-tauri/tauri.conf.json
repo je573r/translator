@@ -8,24 +8,41 @@
   },
   "app": {
     "withGlobalTauri": true,
+    "security": {
+      "csp": null,
+      "capabilities": [
+        "default",
+        "launcher",
+        "overlay"
+      ]
+    },
     "windows": [
+      {
+        "label": "launcher",
+        "title": "Speech Translator",
+        "width": 520,
+        "height": 360,
+        "resizable": false,
+        "decorations": true,
+        "transparent": false,
+        "alwaysOnTop": false,
+        "url": "launcher.html"
+      },
       {
         "label": "overlay",
         "title": "Overlay",
-        "width": 600,
-        "height": 120,
+        "width": 700,
+        "height": 220,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "shadow": false,
         "resizable": false,
+        "visible": false,
         "url": "index.html"
       }
-    ],
-    "security": {
-      "csp": null
-    }
+    ]
   },
   "bundle": {
     "active": true,

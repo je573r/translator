@@ -21,6 +21,7 @@ html, body {
     cursor: move;
     opacity: 0;
     transition: opacity 140ms ease, background 120ms ease, transform 120ms ease;
+    z-index: 1100;
   }
   #drag-handle:hover {
     opacity: 1;
@@ -30,9 +31,9 @@ html, body {
   #overlay {
     background: rgba(0, 0, 0, 0.4);
     color: white;
-    padding: 8px 12px;
+    padding: 12px 14px;
     border-radius: 12px;
-    font-size: 1.2rem;
+    font-size: 1.08rem;
     box-shadow: none;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
@@ -42,7 +43,28 @@ html, body {
     position: fixed;
     left: 16px;
     bottom: 16px;
+    z-index: 1000;
+    width: 820px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow: hidden;
   }
+
+  /* Row styling: two-line clamp each, fixed width */
+  .overlay-row {
+    max-width: 56ch;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    line-height: 1.35em;
+    height: 1.35em; /* single line */
+  }
+  .overlay-history { opacity: 0.85; }
+  .overlay-live { font-weight: 700; }
+
+  /* Fixed 4-row stack height cap (4 rows x 1 line each + gaps) handled by window size */
   /* Reveal the drag handle when the overlay area is hovered */
   body:hover #drag-handle,
   #overlay:hover ~ #drag-handle,

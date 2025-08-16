@@ -8,6 +8,7 @@
   "permissions": [
     "core:default",
     "core:app:allow-name",
+    "core:event:allow-listen",
     "core:window:allow-set-always-on-top",
     "core:window:allow-set-ignore-cursor-events",
     "core:window:allow-set-skip-taskbar",

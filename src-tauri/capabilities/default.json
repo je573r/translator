@@ -3,6 +3,7 @@
   "identifier": "default",
   "description": "Default permissions for the overlay app",
   "windows": [
+    "launcher",
     "overlay"
   ],
   "permissions": [
