@@ -11,4 +11,16 @@ button { padding: 10px 14px; border-radius: 8px; border: none; background: #4b7b
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 .actions { justify-content: flex-end; }
 .status { font-size: 12px; opacity: 0.85; }
+.ui-lang-row { margin: -8px 0 16px 0; }
+.ui-lang-select { 
+  background: transparent; 
+  border: none; 
+  color: #999; 
+  font-size: 11px; 
+  padding: 0; 
+  outline: none; 
+  cursor: pointer;
+  font-family: inherit;
+}
+.ui-lang-select option { background: #1a1c20; color: #e9e9ea; }
 
